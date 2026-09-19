@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Racing Mobile</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #111; text-align: center; font-family: sans-serif; overflow: hidden; color: #fff; }
+        
+        /* HUD Display */
+        .hud { display: grid; grid-template-columns: repeat(3, 1fr); background: #222; padding: 8px; font-size: 12px; border-bottom: 3px solid #ff4757; font-weight: bold; }
+        .task-bar { background: #333; color: #51e2f5; padding: 5px; font-size: 11px; font-weight: bold; }
+        
+        canvas { background: #2b2b2b; display: block; margin: 5px auto; border: 2px solid #444; width: 95%; max-width: 360px; height: 50vh; }
+        
+        /* Control Dashboard */
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; max-width: 360px; margin: 5px auto; padding: 5px; background: #1c1c1c; border-radius: 10px; }
+        .panel { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; }
+        
+        /* Buttons Styling */
+        .btn { width: 65px; height: 65px; background: #333; color: white; border: 2px solid #555; border-radius: 50%; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; }
+        .btn:active { background: #555; }
+        
+        .steering-container { display: flex; gap: 5px; }
+        .steer-btn { width: 45px; height: 60px; background: #444; border: 1px solid #fff; color: white; border-radius: 5px; font-size: 18px; }
+        
+        .clutch-btn { background: #ffa502; }
+        .gear-btn { background: #2ed573; border-radius: 8px; width: 65px; height: 45px; }
+        .shoot-btn { background: #ff4757; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="hud">
+        <div>LVL: <span id="lvlVal">1</span></div>
+        <div>SCORE: <span id="scoreVal">0</span></div>
+        <div>GEAR: <span id="gearVal">N</span></div>
+        <div>FUEL: <span id="fuelVal">100</span>%</div>
+        <div>AMMO: <span id="ammoVal">15</span></div>
+        <div>KM: <span id="distVal">0</span>/30</div>
+    </div>
+    <div class="task-bar" id="taskText">TASK: Collect 2 Gifts & Reach 30KM!</div>
+    
+    <canvas id="gameCanvas" width="320" height="400"></canvas>
+
+    <div class="dashboard">
+        <!-- Left Side: Simple Steer Buttons -->
+        <div class="panel">
+            <span style="font-size:10px; color:#aaa;">STEERING</span>
+            <div class="steering-container">
+                <button class="steer-btn" id="stLeft">◀</button>
+                <button class="steer-btn" id="stRight">▶</button>
+            </div>
+        </div>
+        
+        <!-- Center Side: Clutch & Gear Box -->
+        <div class="panel">
+            <button class="btn gear-btn" id="gearBtn">G: N</button>
+            <button class="btn clutch-btn" id="clutchBtn">CLUTCH</button>
+        </div>
+        
+        <!-- Right Side: Weapon Pad -->
+        <div class="panel">
+            <span style="font-size:10px; color:#ff4757; font-weight:bold;">WEAPON</span>
+            <button class="btn shoot-btn" id="shootBtn">FIRE</button>
+        </div>
+    </div>
+
+    <script>
+        // गेम शुरू करने की सेफ्टी जांच
+        window.onerror = function(msg, url, linenumber) {
+            alert('Error message: '+msg+'\nURL: '+url+'\nLine Number: '+linenumber);
+            return true;
+        }
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let score = 0, level = 1, ammo = 15, fuel = 100, distance = 0, targetDistance = 30;
+        let giftsCollected = 0, reqGifts = 2, villainKilled = false;
+        let gameOver = false, currentGear = 0; 
+        let clutchPressed = false;
+        let baseSpeed = 0, roadOffset = 0;
+
+        let player = { x: 135, y: 300, w: 50, h: 80, turnSpeed: 6 };
+        let scenery = [{x:20, y:0}, {x:20, y:150}, {x:20, y:300}, {x:300, y:0}, {x:300, y:150}, {x:300, y:300}]; 
+        let enemies = [];  
+        let bullets = [];  
+        let items = [];    
+
+        let moveLeft = false, moveRight = false;
+        
+        // यूनिवर्सल इनपुट फंक्शन (टच और क्लिक दोनों के लिए)
+        function setupInput(id, startChange, endChange) {
+            const el = document.getElementById(id);
+            el.addEventListener("touchstart", (e) => { e.preventDefault(); startChange(); });
+            el.addEventListener("touchend", (e) => { e.preventDefault(); endChange(); });
+            el.addEventListener("mousedown", startChange);
+            el.addEventListener("mouseup", endChange);
+        }
+
+        setupInput("stLeft", () => moveLeft = true, () => moveLeft = false);
+        setupInput("stRight", () => moveRight = true, () => moveRight = false);
+        setupInput("clutchBtn", () => { clutchPressed = true; }, () => { clutchPressed = false; });
+
+        // गियर बटन क्लिक लॉजिक
+        const gearBtn = document.getElementById("gearBtn");
+        const changeGear = () => {
+            if (!clutchPressed) {
+                alert("⚠️ STALL! पहले CLUTCH दबाकर रखें, फिर गियर बदलें!");
+                currentGear = 0;
+                baseSpeed = 0;
+            } else {
+                currentGear = (currentGear + 1) % 4;
+                baseSpeed = currentGear * 2.5; 
+            }
+            document.getElementById("gearVal").innerText = currentGear === 0 ? "N" : currentGear;
+            gearBtn.innerText = "G: " + (currentGear === 0 ? "N" : currentGear);
+        };
+        gearBtn.addEventListener("touchstart", (e) => { e.preventDefault(); changeGear(); });
+        gearBtn.addEventListener("click", changeGear);
+
+        // फायर बटन लॉजिक
+        const fireBtn = document.getElementById("shootBtn");
+        const shoot = () => {
+            if (ammo > 0 && !gameOver && currentGear > 0) {
+                ammo--;
+                document.getElementById("ammoVal").innerText = ammo;
+                bullets.push({ x: player.x + player.w/2 - 3, y: player.y, w: 6, h: 15 });
+            }
+        };
+        fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); shoot(); });
+        fireBtn.addEventListener("click", shoot);
+
+        function checkCollision(r1, r2) {
+            return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+        }
+
+        function spawnObjects() {
+            if (baseSpeed === 0) return;
+            if (Math.random() < 0.02 && enemies.length < 2) {
+                let isTruck = (level === 3 && !villainKilled && Math.random() < 0.5);
+                enemies.push({
+                    x: 65 + Math.random() * 140, y: -100,
+                    w: isTruck ? 55 : 45, h: isTruck ? 90 : 70,
+                    color: isTruck ? "#444444" : (Math.random() > 0.5 ? "#e84118" : "#e1b12c"),
+                    hp: isTruck ? 5 : 1, type: isTruck ? "villain" : "normal"
+                });
+            }
+            if (Math.random() < 0.01 && items.length < 1) {
+                let types = ["fuel", "garage", "gift"];
+                items.push({ x: 70 + Math.random() * 140, y: -50, w: 30, h: 30, type: types[Math.floor(Math.random() * types.length)] });
+            }
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            if (baseSpeed > 0) {
+                fuel -= 0.04 * currentGear;
+                distance += 0.01 * baseSpeed;
+                document.getElementById("fuelVal").innerText = Math.max(0, Math.floor(fuel));
+                if (fuel <= 0) { gameOver = true; alert("⛽ Fuel Empty! Game Over."); document.location.reload(); }
+            }
+
+            if (moveLeft && player.x > 60) player.x -= player.turnSpeed;
+            if (moveRight && player.x < canvas.width - player.w - 60) player.x += player.turnSpeed;
+
+            roadOffset += baseSpeed;
+            if (roadOffset > 60) roadOffset = 0;
+
+            scenery.forEach(s => { s.y += baseSpeed; if (s.y > canvas.height) s.y = -30; });
+
+            // Bullets
+            for(let i = bullets.length-1; i >= 0; i--) {
+                bullets[i].y -= 8;
+                if(bullets[i].y < 0) { bullets.splice(i,1); continue; }
+                for(let j = enemies.length-1; j >= 0; j--) {
+                    if (checkCollision(bullets[i], enemies[j])) {
+                        bullets.splice(i,1); enemies[j].hp--;
+                        if (enemies[j].hp <= 0) {
+                            if(enemies[j].type === "villain") { villainKilled = true; distance = targetDistance; }
+                            enemies.splice(j,1); score += 15;
+                            document.getElementById("scoreVal").innerText = score;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Items
+            for(let i = items.length-1; i >= 0; i--) {
+                items[i].y += baseSpeed * 0.6 + 1;
+                if (items[i].y > canvas.height) { items.splice(i,1); continue; }
+                if (checkCollision(player, items[i])) {
+                    if(items[i].type === "fuel") fuel = Math.min(100, fuel + 30);
+                    else if(items[i].type === "garage") ammo += 5;
+                    else if(items[i].type === "gift") giftsCollected++;
+                    items.splice(i,1); score += 10;
+                    document.getElementById("scoreVal").innerText = score;
+                    break;
+                }
+            }
+
+            // Enemies
+            for(let i = enemies.length-1; i >= 0; i--) {
+                enemies[i].y += (enemies[i].type === "villain") ? 1 : 2;
+                if (enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
