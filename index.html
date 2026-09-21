@@ -1,13 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Jungle Armed Racer Pro</title>
+    <style>
+        body { margin:0; background:#222; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; color:white; font-family:sans-serif; }
+        canvas { background:#444; width:100vw; height:70vh; max-width:400px; border-top:4px solid #fff; border-bottom:4px solid #fff; }
+        .controls { display:flex; width:100%; max-width:400px; height:30vh; justify-content:space-around; align-items:center; background:#111; }
+        .btn { width:75px; height:75px; background:#2196f3; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:28px; font-weight:bold; color:white; user-select:none; }
+        #fire { background:#f44336; width:85px; height:85px; }
+    </style>
 </head>
 <body>
-    <script>
-        window.location.href = "https://bit.ly";
-    </script>
+    <div style="position:absolute; top:15px; font-size:22px; font-weight:bold;">Score: <span id="s">0</span></div>
+    <canvas id="c"></canvas>
+    <div class="controls">
+        <div class="btn" id="left">◀</div>
+        <div class="btn" id="fire">🔥</div>
+        <div class="btn" id="right">▶</div>
+    </div>
+<script>
+    const canvas=document.getElementById('c'); const ctx=canvas.getContext('2d');
+    function resize(){ canvas.width=canvas.clientWidth; canvas.height=canvas.clientHeight; }
+    window.addEventListener('resize', resize); resize();
+    let score=0, p={x:canvas.width/2-15, y:canvas.height-80, w:30, h:55}, enemies=[], bullets=[], ml=false, mr=false;
+    document.getElementById('left').addEventListener('touchstart',(e)=>{e.preventDefault(); ml=true;});
+    document.getElementById('left').addEventListener('touchend',(e)=>{e.preventDefault(); ml=false;});
+    document.getElementById('right').addEventListener('touchstart',(e)=>{e.preventDefault(); mr=true;});
+    document.getElementById('right').addEventListener('touchend',(e)=>{e.preventDefault(); mr=false;});
+    document.getElementById('fire').addEventListener('touchstart',(e)=>{e.preventDefault(); bullets.push({x:p.x+12,y:p.y,w:6,h:15});});
+    function loop(){
+        ctx.clearRect(0,0,canvas.width,canvas.height); if(ml&&p.x>10)p.x-=5; if(mr&&p.x<canvas.width-p.w-10)p.x+=5;
+        ctx.fillStyle='#00bcd4'; ctx.fillRect(p.x,p.y,p.w,p.h);
+        bullets.forEach((b,i)=>{ b.y-=8; ctx.fillStyle='#ffeb3b'; ctx.fillRect(b.x,b.y,b.w,b.h); if(b.y<0)bullets.splice(i,1); });
+        if(Math.random()<0.02&&enemies.length<3)enemies.push({x:Math.random()*(canvas.width-50)+10,y:-60,w:30,h:55});
+        enemies.forEach((e,ei)=>{ e.y+=4; ctx.fillStyle='#ff5722'; ctx.fillRect(e.x,e.y,e.w,e.h);
+            if(p.x<e.x+e.w&&p.x+p.w>e.x&&p.y<e.y+e.h&&p.y+p.h>e.y){ score=0; document.getElementById('s').innerText=score; enemies=[]; }
+            bullets.forEach((b,bi)=>{ if(b.x<e.x+e.w&&b.x+b.w>e.x&&b.y<e.y+e.h&&b.y+b.h>e.y){ enemies.splice(ei,1); bullets.splice(bi,1); score+=10; document.getElementById('s').innerText=score; } });
+            if(e.y>canvas.height)enemies.splice(ei,1);
+        }); requestAnimationFrame(loop);
+    } loop();
+</script>
 </body>
 </html>
