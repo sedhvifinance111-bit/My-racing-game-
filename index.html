@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Armed Racer - DOM Ultimate</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background: #08140a; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+        #menuScreen { position: absolute; width: 100vw; height: 100vh; background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.95)); display: flex; flex-direction: column; justify-content: flex-start; align-items: center; z-index: 30; padding: 20px; overflow-y: auto; }
+        h1 { font-size: 26px; color: #4caf50; text-shadow: 0 0 10px #000; margin: 15px 0; font-weight: 800; text-align: center; }
+        .currency-bar { background: rgba(0,0,0,0.6); padding: 8px 20px; border-radius: 20px; border: 2px solid #ffd700; font-size: 18px; font-weight: bold; color: #ffd700; margin-bottom: 15px; }
+        .selector-box { display: flex; gap: 12px; margin-bottom: 20px; overflow-x: auto; width: 100%; max-width: 450px; padding: 10px 5px; }
+        .vehicle-card { background: rgba(255,255,255,0.08); border: 3px solid #555; border-radius: 12px; padding: 12px; min-width: 110px; text-align: center; cursor: pointer; }
+        .vehicle-card.active { border-color: #ff9800; background: rgba(255, 152, 0, 0.2); }
+        .vehicle-card img { width: 65px; height: 45px; object-fit: contain; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }
+        .garage-panel { background: rgba(0,0,0,0.85); border: 2px solid #333; border-radius: 15px; width: 100%; max-width: 450px; padding: 15px; margin-bottom: 20px; }
+        .garage-title { color: #00e5ff; font-size: 15px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; text-align: center; }
+        .upgrade-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .up-btn { background: #2e7d32; border: none; color: white; padding: 6px 14px; border-radius: 15px; font-weight: bold; font-size: 13px; box-shadow: 0 3px 0 #1b5e20; }
+        .up-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #1b5e20; }
+        #startBtn { width: 100%; max-width: 450px; padding: 14px; font-size: 22px; font-weight: bold; background: linear-gradient(#ff9800, #e65100); border: none; color: white; border-radius: 35px; box-shadow: 0 5px 15px rgba(255,152,0,0.4); margin-bottom: 20px; }
+        
+        /* 🌟 नया डोम रेंडरिंग ट्रैक */
+        #gameArea { position: relative; width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: space-between; align-items: center; background: #1b5e20; }
+        #scoreBoard { position: absolute; top: 15px; left: 15px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.9); padding: 8px 15px; border-radius: 15px; border: 2px solid #4caf50; z-index: 25; display: flex; flex-direction: column; gap: 3px; }
+        #playStage { position: relative; width: 100%; height: 70vh; max-width: 450px; background: #222; overflow: hidden; border-left: 6px dashed #666; border-right: 6px dashed #666; }
+        
+        /* गेम के सभी ऑब्जेक्ट्स सीधे एचटीएमएल लेयर्स पर चलेंगे */
+        .game-object { position: absolute; background-size: contain; background-repeat: no-repeat; background-position: center; z-index: 10; transform: translate(-50%, -50%); }
+        #playerTrack { width: 45px; height: 68px; z-index: 15; transition: left 0.05s ease-out; }
+        
+        #controls { width: 100%; max-width: 450px; height: 30vh; background: #141414; display: flex; justify-content: space-around; align-items: center; padding: 10px; z-index: 20; }
+        .btn { width: 75px; height: 75px; background: linear-gradient(135deg, #3a3a3a, #1a1a1a); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 32px; border: 3px solid #666; color: white; box-shadow: 0 6px 0 #000; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #000; }
+        #fire { background: linear-gradient(135deg, #e53935, #b71c1c); border-color: #ef5350; width: 90px; height: 90px; }
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 40; text-align: center; padding: 20px; }
+        .panel-btn { margin-top: 20px; padding: 12px 40px; font-size: 18px; font-weight: bold; background: linear-gradient(#4caf50, #2e7d32); border: none; color: white; border-radius: 30px; }
+    </style>
+</head>
+<body>
+
+<div id="menuScreen">
+    <h1>JUNGLE ARMED RACER</h1>
+    <div class="currency-bar">💰 Coins: <span id="menuCoins">0</span></div>
+    <p style="color: #bbb; font-size: 14px; margin-bottom: 5px;">अपनी सवारी चुनें:</p>
+    <div class="selector-box">
+        <div class="vehicle-card active" onclick="selectVehicle('jeep', 'jeep.png', 45, 68)">
+            <img src="jeep.png" alt="Jeep">Jeep Lvl 1
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('jeep2', 'jeep2.png', 48, 72)">
+            <img src="jeep2.png" alt="Heavy Jeep">Heavy Truck
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('cruiser', 'cruiser.png', 32, 70)">
+            <img src="cruiser.png" alt="Cruiser">Cruiser Bike
+        </div>
+    </div>
+
+    <div class="garage-panel">
+        <div class="garage-title">🛠️ VEHICLE GARAGE & UPGRADES</div>
+        <div class="upgrade-row">
+            <div>🔧 Condition: <span id="statusText" style="color:#4caf50; font-weight:bold;">100% PERFECT</span></div>
+            <button class="up-btn" style="background:#0288d1; box-shadow:0 3px 0 #01579b;" onclick="repairVehicle()">REPAIR (💵 50)</button>
+        </div>
+        <div class="upgrade-row">
+            <div>🚀 Engine Speed: Lvl <span id="speedLvl">1</span></div>
+            <button class="up-btn" onclick="upgrade('speed')">UPGRADE (💵 100)</button>
+        </div>
+        <div class="upgrade-row">
+            <div>🛡️ Armor Shield: Lvl <span id="armorLvl">1</span></div>
+            <button class="up-btn" onclick="upgrade('armor')">UPGRADE (💵 120)</button>
+        </div>
+        <div class="upgrade-row">
+            <div>🔫 Laser Weapon: Lvl <span id="weaponLvl">1</span></div>
+            <button class="up-btn" onclick="upgrade('weapon')">UPGRADE (💵 150)</button>
+        </div>
+    </div>
+    <button id="startBtn" onclick="startGame()">START MISSION 🏁</button>
+</div>
+
+<div id="gameArea">
+    <div id="scoreBoard">
+        <div style="color: #00e5ff;">CONDITION: <span id="healthVal">100</span>%</div>
+        <div style="color: #ffd700;">COINS: <span id="gameCoins">0</span></div>
+        <div style="color: #fff;">SCORE: <span id="scoreVal">0</span></div>
+        <div style="color:#ffeb3b">FUEL: <span id="fuelVal">100</span>%</div>
+    </div>
+    
+    <!-- मुख्य स्टेज जहाँ बिना कैनवास के डायरेक्ट गाड़ियां लोड होंगी -->
+    <div id="playStage">
+        <div id="playerTrack" class="game-object"></div>
+    </div>
+    
+    <div id="controls">
+        <div class="btn" id="leftBtn">◀</div>
+        <div class="btn" id="fire">🔥</div>
+        <div class="btn" id="rightBtn">▶</div>
+    </div>
+    <div id="gameOverScreen" class="overlay-screen">
+        <h1 style="color: #e50914; font-size: 34px;">💥 VEHICLE DESTROYED 💥</h1>
+        <button class="panel-btn" onclick="resetToMenu()">BACK TO GARAGE</button>
+    </div>
+</div>
+
+<script>
+    const stage = document.getElementById('playStage');
+    const pTrack = document.getElementById('playerTrack');
+
+    let totalCoins = 0, upStats = { speed: 1, armor: 1, weapon: 1, health: 100 };
+    let score = 0, fuel = 100, gameOver = false, baseSpeed = 5;
+    let selectedVehicle = 'jeep', selectedImg = 'jeep.png';
+    let playerX = 50; // प्रतिशत में स्थिति ताकि स्क्रीन के बाहर न जाए
+    let moveLeft = false, moveRight = false, matchCoins = 0;
+    let enemies = [], items = [];
+
+    function selectVehicle(type, img, w, h) { selectedVehicle = type; selectedImg = img; pTrack.style.width = w+'px'; pTrack.style.height = h+'px'; document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('active')); event.currentTarget.classList.add('active'); }
+    function updateGarageUI() { document.getElementById('menuCoins').innerText = totalCoins; document.getElementById('speedLvl').innerText = upStats.speed; document.getElementById('armorLvl').innerText = upStats.armor; document.getElementById('weaponLvl').innerText = upStats.weapon; }
+    function repairVehicle() { if(totalCoins >= 50 && upStats.health < 100) { totalCoins -= 50; upStats.health = 100; updateGarageUI(); } }
+    function upgrade(stat) {
+        if(stat === 'speed' && totalCoins >= 100) { totalCoins -= 100; upStats.speed++; baseSpeed = 5 + upStats.speed*0.5; updateGarageUI(); }
+        if(stat === 'armor' && totalCoins >= 120) { totalCoins -= 120; upStats.armor++; updateGarageUI(); }
+        if(stat === 'weapon' && totalCoins >= 150) { totalCoins -= 150; upStats.weapon++; updateGarageUI(); }
+    }
+    
+    function startGame() {
+        document.getElementById('menuScreen').style.display = 'none';
+        document.getElementById('gameArea').style.display = 'flex';
+        gameOver = false; score = 0; fuel = 100; matchCoins = 0; playerX = 50;
+        pTrack.style.backgroundImage = `url('${selectedImg}')`;
+        pTrack.style.bottom = '30px';
+        
+        // पुरानी बाधाएं साफ़ करें
+        document.querySelectorAll('.enemy-obj, .item-obj').forEach(el => el.remove());
+        enemies = []; items = [];
+        
+        document.getElementById('healthVal').innerText = upStats.health;
+        document.getElementById('gameCoins').innerText = matchCoins;
+        document.getElementById('scoreVal').innerText = score;
