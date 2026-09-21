@@ -1,44 +1,196 @@
 <!DOCTYPE html>
-<html>
+<html lang="hi">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Armed Racer Pro</title>
     <style>
-        body { margin:0; background:#222; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; color:white; font-family:sans-serif; }
-        canvas { background:#444; width:100vw; height:70vh; max-width:400px; border-top:4px solid #fff; border-bottom:4px solid #fff; }
-        .controls { display:flex; width:100%; max-width:400px; height:30vh; justify-content:space-around; align-items:center; background:#111; }
-        .btn { width:75px; height:75px; background:#2196f3; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:28px; font-weight:bold; color:white; user-select:none; }
-        #fire { background:#f44336; width:85px; height:85px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background: #111; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+        #gameArea { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; background: #1b5e20; }
+        #score { position: absolute; top: 15px; left: 15px; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; border: 2px solid #4caf50; z-index: 10; }
+        canvas { background: #333; display: block; width: 100%; height: 70vh; max-width: 450px; border-left: 8px double #fff; border-right: 8px double #fff; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        #controls { width: 100%; max-width: 450px; height: 30vh; background: #151515; display: flex; justify-content: space-around; align-items: center; padding: 10px; border-top: 5px solid #222; }
+        .btn { width: 75px; height: 75px; background: linear-gradient(135deg, #0288d1, #01579b); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 32px; border: 3px solid #03a9f4; color: white; box-shadow: 0 6px 0 #013967, 0 8px 15px rgba(0,0,0,0.4); transition: 0.1s; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #013967, 0 4px 6px rgba(0,0,0,0.4); background: #0288d1; }
+        #fire { background: linear-gradient(135deg, #d32f2f, #b71c1c); border-color: #f44336; width: 90px; height: 90px; font-size: 38px; box-shadow: 0 6px 0 #7f1414, 0 8px 15px rgba(0,0,0,0.4); }
+        #fire:active { background: #d32f2f; box-shadow: 0 2px 0 #7f1414, 0 4px 6px rgba(0,0,0,0.4); }
+        #gameOverScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+        #restartBtn { margin-top: 25px; padding: 12px 35px; font-size: 20px; font-weight: bold; background: #4caf50; border: none; color: white; border-radius: 30px; box-shadow: 0 5px 15px rgba(76,175,80,0.5); cursor: pointer; }
     </style>
 </head>
 <body>
-    <div style="position:absolute; top:15px; font-size:22px; font-weight:bold;">Score: <span id="s">0</span></div>
-    <canvas id="c"></canvas>
-    <div class="controls">
-        <div class="btn" id="left">◀</div>
+
+<div id="gameArea">
+    <div id="score">Score: <span id="scoreVal">0</span></div>
+    <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+        <div class="btn" id="leftBtn">◀</div>
         <div class="btn" id="fire">🔥</div>
-        <div class="btn" id="right">▶</div>
+        <div class="btn" id="rightBtn">▶</div>
     </div>
+
+    <div id="gameOverScreen">
+        <h1 style="color: #e50914; font-size: 42px; text-shadow: 0 0 10px rgba(229,9,20,0.5);">💥 CRASHED 💥</h1>
+        <p style="margin-top:15px; font-size: 22px; color: #aaa;">Final Score: <span id="finalScore" style="color:#fff; font-weight:bold;">0</span></p>
+        <button id="restartBtn">RESTART RACE</button>
+    </div>
+</div>
+
 <script>
-    const canvas=document.getElementById('c'); const ctx=canvas.getContext('2d');
-    function resize(){ canvas.width=canvas.clientWidth; canvas.height=canvas.clientHeight; }
-    window.addEventListener('resize', resize); resize();
-    let score=0, p={x:canvas.width/2-15, y:canvas.height-80, w:30, h:55}, enemies=[], bullets=[], ml=false, mr=false;
-    document.getElementById('left').addEventListener('touchstart',(e)=>{e.preventDefault(); ml=true;});
-    document.getElementById('left').addEventListener('touchend',(e)=>{e.preventDefault(); ml=false;});
-    document.getElementById('right').addEventListener('touchstart',(e)=>{e.preventDefault(); mr=true;});
-    document.getElementById('right').addEventListener('touchend',(e)=>{e.preventDefault(); mr=false;});
-    document.getElementById('fire').addEventListener('touchstart',(e)=>{e.preventDefault(); bullets.push({x:p.x+12,y:p.y,w:6,h:15});});
-    function loop(){
-        ctx.clearRect(0,0,canvas.width,canvas.height); if(ml&&p.x>10)p.x-=5; if(mr&&p.x<canvas.width-p.w-10)p.x+=5;
-        ctx.fillStyle='#00bcd4'; ctx.fillRect(p.x,p.y,p.w,p.h);
-        bullets.forEach((b,i)=>{ b.y-=8; ctx.fillStyle='#ffeb3b'; ctx.fillRect(b.x,b.y,b.w,b.h); if(b.y<0)bullets.splice(i,1); });
-        if(Math.random()<0.02&&enemies.length<3)enemies.push({x:Math.random()*(canvas.width-50)+10,y:-60,w:30,h:55});
-        enemies.forEach((e,ei)=>{ e.y+=4; ctx.fillStyle='#ff5722'; ctx.fillRect(e.x,e.y,e.w,e.h);
-            if(p.x<e.x+e.w&&p.x+p.w>e.x&&p.y<e.y+e.h&&p.y+p.h>e.y){ score=0; document.getElementById('s').innerText=score; enemies=[]; }
-            bullets.forEach((b,bi)=>{ if(b.x<e.x+e.w&&b.x+b.w>e.x&&b.y<e.y+e.h&&b.y+b.h>e.y){ enemies.splice(ei,1); bullets.splice(bi,1); score+=10; document.getElementById('s').innerText=score; } });
-            if(e.y>canvas.height)enemies.splice(ei,1);
-        }); requestAnimationFrame(loop);
-    } loop();
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    function resizeCanvas() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    }
+    resizeCanvas();
+
+    let score = 0, gameOver = false, roadOffset = 0;
+    let player = { x: canvas.width / 2 - 20, y: canvas.height - 120, w: 40, h: 75, speed: 7 };
+    let enemies = [], bullets = [], moveLeft = false, moveRight = false;
+
+    // Touch Event Listeners
+    document.getElementById('leftBtn').addEventListener('touchstart', (e) => { e.preventDefault(); moveLeft = true; });
+    document.getElementById('leftBtn').addEventListener('touchend', (e) => { e.preventDefault(); moveLeft = false; });
+    document.getElementById('rightBtn').addEventListener('touchstart', (e) => { e.preventDefault(); moveRight = true; });
+    document.getElementById('rightBtn').addEventListener('touchend', (e) => { e.preventDefault(); moveRight = false; });
+    document.getElementById('fire').addEventListener('touchstart', (e) => { e.preventDefault(); shoot(); });
+
+    function shoot() {
+        if (gameOver) return;
+        bullets.push({ x: player.x + player.w/2 - 3, y: player.y - 15, w: 6, h: 20 });
+    }
+
+    function restart() {
+        score = 0;
+        document.getElementById('scoreVal').innerText = score;
+        enemies = []; bullets = [];
+        player.x = canvas.width / 2 - player.w / 2;
+        gameOver = false;
+        document.getElementById('gameOverScreen').style.display = 'none';
+        animate();
+    }
+    document.getElementById('restartBtn').addEventListener('click', restart);
+
+    function drawPlayer(x, y, w, h) {
+        // Main Car Body (Sporty Red/Orange Look)
+        ctx.fillStyle = '#ff3d00';
+        ctx.fillRect(x, y, w, h);
+        // Cabin Spoiler
+        ctx.fillStyle = '#212121';
+        ctx.fillRect(x - 4, y + h - 10, w + 8, 8);
+        // Front Racing Stripes
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(x + w/2 - 4, y, 8, h - 30);
+        // Wheels
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x - 5, y + 10, 5, 15);
+        ctx.fillRect(x + w, y + 10, 5, 15);
+        ctx.fillRect(x - 5, y + h - 25, 5, 15);
+        ctx.fillRect(x + w, y + h - 25, 5, 15);
+        // Glass Windshield
+        ctx.fillStyle = '#00e5ff';
+        ctx.fillRect(x + 6, y + 20, w - 12, 18);
+    }
+
+    function drawEnemy(x, y, w, h) {
+        // Enemy Bike/Car Design (Armored Yellow/Black)
+        ctx.fillStyle = '#ffea00';
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x + 5, y + 15, w - 10, 20); // Window
+        // Wheels
+        ctx.fillRect(x - 4, y + 8, 4, 12);
+        ctx.fillRect(x + w, y + 8, 4, 12);
+        ctx.fillRect(x - 4, y + h - 20, 4, 12);
+        ctx.fillRect(x + w, y + h - 20, 4, 12);
+    }
+
+    function animate() {
+        if (gameOver) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Moving Track Background Stripes
+        ctx.fillStyle = '#222';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = '#ffea00';
+        ctx.lineWidth = 6;
+        ctx.setLineDash([30, 30]);
+        ctx.lineDashOffset = -roadOffset;
+        roadOffset += 8;
+
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+
+        // Player Controls Handling
+        if (moveLeft && player.x > 15) player.x -= player.speed;
+        if (moveRight && player.x < canvas.width - player.w - 15) player.x += player.speed;
+
+        drawPlayer(player.x, player.y, player.w, player.h);
+
+        // Rockets / Bullets Logic
+        bullets.forEach((b, i) => {
+            b.y -= 12;
+            ctx.fillStyle = '#ffeb3b';
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+            // Flash Effect
+            ctx.fillStyle = '#ff5722';
+            ctx.fillRect(b.x - 2, b.y + b.h, b.w + 4, 6);
+            if (b.y < 0) bullets.splice(i, 1);
+        });
+
+        // Spawn Enemies
+        if (Math.random() < 0.025 && enemies.length < 4) {
+            let eW = 38;
+            let eX = Math.random() * (canvas.width - eW - 40) + 20;
+            enemies.push({ x: eX, y: -80, w: eW, h: 70, speed: Math.random() * 3 + 4 });
+        }
+
+        // Enemies Loop
+        enemies.forEach((e, ei) => {
+            e.y += e.speed;
+            drawEnemy(e.x, e.y, e.w, e.h);
+
+            // Crash Check
+            if (player.x < e.x + e.w && player.x + player.w > e.x &&
+                player.y < e.y + e.h && player.y + player.h > e.y) {
+                gameOver = true;
+                document.getElementById('finalScore').innerText = score;
+                document.getElementById('gameOverScreen').style.display = 'flex';
+            }
+
+            // Rocket Collision
+            bullets.forEach((b, bi) => {
+                if (b.x < e.x + e.w && b.x + b.w > e.x &&
+                    b.y < e.y + e.h && b.y + b.h > e.y) {
+                    // Blast Particle effect placeholder
+                    ctx.fillStyle = '#ff5722';
+                    ctx.beginPath(); ctx.arc(e.x+e.w/2, e.y+e.h/2, 30, 0, Math.PI*2); ctx.fill();
+                    
+                    enemies.splice(ei, 1);
+                    bullets.splice(bi, 1);
+                    score += 15;
+                    document.getElementById('scoreVal').innerText = score;
+                }
+            });
+
+            if (e.y > canvas.height) {
+                enemies.splice(ei, 1);
+                score += 5;
+                document.getElementById('scoreVal').innerText = score;
+            }
+        });
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
 </script>
 </body>
 </html>
