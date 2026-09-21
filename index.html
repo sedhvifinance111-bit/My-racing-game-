@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Armed Racer - Ultimate Edition</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background: #08140a; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+        
+        #menuScreen { position: absolute; width: 100vw; height: 100vh; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https://unsplash.com') center/cover; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; z-index: 30; padding: 20px; overflow-y: auto; }
+        h1 { font-size: 28px; color: #4caf50; text-shadow: 0 0 10px #000; margin: 15px 0; font-weight: 800; text-align: center; }
+        
+        .currency-bar { background: rgba(0,0,0,0.6); padding: 8px 20px; border-radius: 20px; border: 2px solid #ffd700; font-size: 18px; font-weight: bold; color: #ffd700; margin-bottom: 15px; }
+        
+        .selector-box { display: flex; gap: 15px; margin-bottom: 20px; overflow-x: auto; width: 100%; max-width: 450px; padding: 10px 5px; }
+        .vehicle-card { background: rgba(255,255,255,0.08); border: 3px solid #555; border-radius: 12px; padding: 10px; min-width: 120px; text-align: center; cursor: pointer; }
+        .vehicle-card.active { border-color: #ff9800; background: rgba(255, 152, 0, 0.2); }
+        .vehicle-card span { font-size: 36px; display: block; margin-bottom: 5px; }
+        
+        .garage-panel { background: rgba(0,0,0,0.8); border: 2px solid #444; border-radius: 15px; width: 100%; max-width: 450px; padding: 15px; margin-bottom: 20px; }
+        .garage-title { color: #00e5ff; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .upgrade-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .up-btn { background: #2e7d32; border: none; color: white; padding: 6px 15px; border-radius: 15px; font-weight: bold; font-size: 14px; box-shadow: 0 3px 0 #1b5e20; }
+        .up-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #1b5e20; }
+        
+        #startBtn { width: 100%; max-width: 450px; padding: 14px; font-size: 22px; font-weight: bold; background: linear-gradient(#ff9800, #e65100); border: none; color: white; border-radius: 35px; box-shadow: 0 5px 15px rgba(255,152,0,0.4); margin-bottom: 20px; }
+        
+        #gameArea { position: relative; width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: space-between; align-items: center; background: #1b5e20; }
+        #scoreBoard { position: absolute; top: 15px; left: 15px; font-size: 14px; font-weight: bold; background: rgba(0,0,0,0.85); padding: 8px 15px; border-radius: 20px; border: 2px solid #4caf50; z-index: 10; display: flex; flex-direction: column; gap: 3px; }
+        canvas { background: #222; display: block; width: 100%; height: 70vh; max-width: 450px; border-left: 6px dashed #777; border-right: 6px dashed #777; }
+        
+        #controls { width: 100%; max-width: 450px; height: 30vh; background: #141414; display: flex; justify-content: space-around; align-items: center; padding: 10px; }
+        .btn { width: 75px; height: 75px; background: linear-gradient(135deg, #3a3a3a, #1a1a1a); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 32px; border: 3px solid #666; color: white; box-shadow: 0 6px 0 #000; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #000; }
+        #fire { background: linear-gradient(135deg, #e53935, #b71c1c); border-color: #ef5350; width: 90px; height: 90px; }
+        
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 40; text-align: center; padding: 20px; }
+        .panel-btn { margin-top: 20px; padding: 12px 40px; font-size: 18px; font-weight: bold; background: linear-gradient(#4caf50, #2e7d32); border: none; color: white; border-radius: 30px; }
+    </style>
+</head>
+<body>
+
+<div id="menuScreen">
+    <h1>JUNGLE ARMED RACER</h1>
+    <div class="currency-bar">💰 Coins: <span id="menuCoins">0</span></div>
+    
+    <p style="color: #bbb; font-size: 14px; margin-bottom: 5px;">अपनी सवारी चुनें:</p>
+    <div class="selector-box">
+        <div class="vehicle-card active" onclick="selectVehicle('jeep', 45, 68)">
+            <span>🛻</span>Jeep
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('cruiser', 32, 70)">
+            <span>🏍️</span>Cruiser Bike
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('sportbike', 32, 68)">
+            <span>🚀</span>Sports Bike
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('audi', 44, 72)">
+            <span>🏎️</span>Audi Car
+        </div>
+    </div>
+
+    <div class="garage-panel">
+        <div class="garage-title">🛠️ VEHICLE GARAGE & UPGRADES</div>
+        <div class="upgrade-row">
+            <div>🔧 Condition: <span id="statusText" style="color:#4caf50; font-weight:bold;">100% PERFECT</span></div>
+            <button class="up-btn" style="background:#0288d1; box-shadow:0 3px 0 #01579b;" onclick="repairVehicle()">REPAIR (💵 50)</button>
+        </div>
+        <div class="upgrade-row">
+            <div>🚀 Engine Speed: Lvl <span id="speedLvl">1</span></div>
+            <button class="up-btn" onclick="upgrade('speed')">UPGRADE (💵 100)</button>
+        </div>
+        <div class="upgrade-row">
+            <div>🛡️ Armor Shield: Lvl <span id="armorLvl">1</span></div>
+            <button class="up-btn" onclick="upgrade('armor')">UPGRADE (💵 120)</button>
+        </div>
+        <div class="upgrade-row">
+            <div>🔫 Laser Weapon: Lvl <span id="weaponLvl">1</span></div>
+            <button class="up-btn" onclick="upgrade('weapon')">UPGRADE (💵 150)</button>
+        </div>
+    </div>
+
+    <button id="startBtn" onclick="startGame()">START MISSION 🏁</button>
+</div>
+
+<div id="gameArea">
+    <div id="scoreBoard">
+        <div style="color: #00e5ff;">CONDITION: <span id="healthVal">100</span>%</div>
+        <div style="color: #ffd700;">COINS: <span id="gameCoins">0</span></div>
+        <div style="color: #fff;">SCORE: <span id="scoreVal">0</span></div>
+        <div style="color:#ffeb3b">FUEL: <span id="fuelVal">100</span>%</div>
+    </div>
+    <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+        <div class="btn" id="leftBtn">◀</div>
+        <div class="btn" id="fire">🔥</div>
+        <div class="btn" id="rightBtn">▶</div>
+    </div>
+
+    <div id="gameOverScreen" class="overlay-screen">
+        <h1 style="color: #e50914; font-size: 36px;">💥 VEHICLE DESTROYED 💥</h1>
+        <p style="margin-top:15px; font-size: 20px; color: #aaa;">कमाए गए सिक्के: <span id="earnedCoins" style="color:#ffd700;">0</span></p>
+        <button class="panel-btn" onclick="resetToMenu()">BACK TO GARAGE</button>
+    </div>
+
+    <div id="levelScreen" class="overlay-screen">
+        <h1 style="color: #4caf50; font-size: 44px;">⭐ LEVEL UP! ⭐</h1>
+        <p style="font-size: 22px; color: #ffd700; font-weight: bold; margin-top:20px;">Level Reward: +100 Coins!</p>
+        <button class="panel-btn" onclick="nextLevel()">CLAIM & CONTINUE ▶</button>
+    </div>
+
+    <div id="victoryScreen" class="overlay-screen">
+        <h1 style="color: #ffd700; font-size: 40px;">🏆 JUNGLE CHAMPION 🏆</h1>
+        <p style="margin-top:15px; font-size: 22px;">असंभव! आपने सभी 100 सीक्रेट लेवल पार कर लिए!</p>
+        <button class="panel-btn" onclick="resetToMenu()">GO TO GARAGE</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    function resize() { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+    resize();
+
+    // 🌟 जादुई बैकएंड सिस्टम: आपकी सभी असली फोटोज़ को सीधे कोड में ड्रा करने के लिए कस्टमाइज्ड डिज़ाइन
+    const assetDraw = {
+        jeep: (x, y, w, h) => {
+            ctx.fillStyle = '#2e7d32'; ctx.fillRect(x, y, w, h); // हरी जीप बॉडी
+            ctx.fillStyle = '#1b5e20'; ctx.fillRect(x-2, y+h-15, w+4, 6); // स्पेयर टायर होल्डर
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.fillText('★', x+w/2-5, y+h-25); // स्टार मार्क
+            ctx.fillStyle = '#000'; ctx.fillRect(x-4, y+10, 4, 12); ctx.fillRect(x+w, y+10, 4, 12); // पहिए
+            ctx.fillRect(x-4, y+h-20, 4, 12); ctx.fillRect(x+w, y+h-20, 4, 12);
+            ctx.fillStyle = '#e0f7fa'; ctx.fillRect(x+4, y+15, w-8, 12); // विंडशील्ड शीशा
+        },
+        cruiser: (x, y, w, h) => {
+            ctx.fillStyle = '#111'; ctx.fillRect(x+w/2-5, y, 10, h); // ब्लैक हैवी बॉडी
+            ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(x+w/2-10, y+h-15, 5, 0, Math.PI*2); ctx.fill(); // इंडिकेटर लाइट
+            ctx.beginPath(); ctx.arc(x+w/2+10, y+h-15, 5, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#d50000'; ctx.fillRect(x+w/2-6, y+h-10, 12, 8); // रेड टेल लाइट
+            ctx.fillStyle = '#555'; ctx.fillRect(x+w/2-8, y+15, 16, 5); // क्रोम हैंडल बार
+        },
+        sportbike: (x, y, w, h) => {
+            ctx.fillStyle = '#0d47a1'; ctx.fillRect(x+w/2-6, y, 12, h); // रेसिंग ब्लू बॉडी
+            ctx.fillStyle = '#fff'; ctx.fillRect(x+w/2-4, y+10, 8, h-25); // वाइट रेसिंग पट्टियां
+            ctx.fillStyle = '#000'; ctx.fillRect(x+w/2-4, y, 8, 12); // मोटा रेसिंग टायर
+            ctx.fillStyle = '#333'; ctx.fillRect(x+w/2+4, y+h-30, 5, 18); // ब्लैक एग्जॉस्ट साइलेंसर
+        },
+        audi: (x, y, w, h) => {
