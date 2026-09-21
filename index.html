@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Armed Racer Pro - 50 Levels</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background: #0c2310; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+        #menuScreen { position: absolute; width: 100vw; height: 100vh; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.85)), url('https://unsplash.com') center/cover; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; padding: 20px; text-align: center; }
+        h1 { font-size: 30px; color: #4caf50; text-shadow: 0 0 15px rgba(0,0,0,1); margin-bottom: 20px; font-weight: 800; }
+        .selector-box { display: flex; gap: 15px; margin-bottom: 30px; overflow-x: auto; width: 100%; max-width: 450px; padding: 10px 5px; }
+        .vehicle-card { background: rgba(255,255,255,0.08); border: 3px solid #555; border-radius: 12px; padding: 12px; min-width: 120px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .vehicle-card.active { border-color: #ff9800; background: rgba(255, 152, 0, 0.25); transform: scale(1.05); }
+        .vehicle-card img { width: 65px; height: 45px; object-fit: contain; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto; }
+        #startBtn { padding: 14px 45px; font-size: 22px; font-weight: bold; background: linear-gradient(#ff9800, #e65100); border: none; color: white; border-radius: 35px; box-shadow: 0 6px 20px rgba(255,152,0,0.4); }
+        
+        #gameArea { position: relative; width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: space-between; align-items: center; background: #1b5e20; }
+        #scoreBoard { position: absolute; top: 15px; left: 15px; font-size: 16px; font-weight: bold; background: rgba(0,0,0,0.85); padding: 8px 15px; border-radius: 25px; border: 2px solid #4caf50; z-index: 10; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        canvas { background: #222; display: block; width: 100%; height: 70vh; max-width: 450px; border-left: 6px dashed #888; border-right: 6px dashed #888; }
+        #controls { width: 100%; max-width: 450px; height: 30vh; background: #141414; display: flex; justify-content: space-around; align-items: center; padding: 10px; border-top: 4px solid #252525; }
+        .btn { width: 75px; height: 75px; background: linear-gradient(135deg, #3a3a3a, #1a1a1a); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 32px; border: 3px solid #666; color: white; box-shadow: 0 6px 0 #000; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #000; }
+        #fire { background: linear-gradient(135deg, #e53935, #b71c1c); border-color: #ef5350; width: 90px; height: 90px; font-size: 36px; }
+        
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 40; text-align: center; }
+        .panel-btn { margin-top: 25px; padding: 12px 40px; font-size: 20px; font-weight: bold; background: linear-gradient(#4caf50, #2e7d32); border: none; color: white; border-radius: 30px; }
+    </style>
+</head>
+<body>
+
+<!-- मेनू स्क्रीन -->
+<div id="menuScreen">
+    <h1>JUNGLE ARMED RACER PRO</h1>
+    <p style="color: #ddd; margin-bottom: 15px;">अपनी गाड़ी/बाइक चुनें (50 लेवल्स स्पेशल):</p>
+    <div class="selector-box">
+        <div class="vehicle-card active" onclick="selectVehicle('jeep', 45, 68)">
+            <img src="https://ibb.co" alt="Jeep">Military Jeep
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('cruiser', 32, 70)">
+            <img src="https://ibb.co" alt="Cruiser">Cruiser Bike
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('sportbike', 32, 68)">
+            <img src="https://ibb.co" alt="Sportbike">Sports Bike
+        </div>
+        <div class="vehicle-card" onclick="selectVehicle('audi', 44, 72)">
+            <img src="https://ibb.co" alt="Audi">Audi Racing
+        </div>
+    </div>
+    <button id="startBtn" onclick="startGame()">RACE START 🏁</button>
+</div>
+
+<!-- मुख्य गेम स्क्रीन -->
+<div id="gameArea">
+    <div id="scoreBoard">
+        <div style="color: #4caf50;">LEVEL: <span id="levelVal">1</span>/50</div>
+        <div>Target: <span id="targetVal">50</span></div>
+        <div>Score: <span id="scoreVal">0</span></div>
+        <div style="color:#ffeb3b">Fuel: <span id="fuelVal">100</span>%</div>
+    </div>
+    <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+        <div class="btn" id="leftBtn">◀</div>
+        <div class="btn" id="fire">🔥</div>
+        <div class="btn" id="rightBtn">▶</div>
+    </div>
+
+    <!-- गेम ओवर स्क्रीन -->
+    <div id="gameOverScreen" class="overlay-screen">
+        <h1 style="color: #e50914; font-size: 40px;">💥 MISSION FAILED 💥</h1>
+        <p style="margin-top:15px; font-size: 22px;">Level: <span id="failLevel">1</span></p>
+        <p style="font-size: 20px; color: #aaa;">Score: <span id="finalScore">0</span></p>
+        <button class="panel-btn" onclick="resetToMenu()">BACK TO MENU</button>
+    </div>
+
+    <!-- लेवल कम्प्लीट स्क्रीन -->
+    <div id="levelScreen" class="overlay-screen">
+        <h1 style="color: #4caf50; font-size: 42px;">🎉 LEVEL COMPLETED! 🎉</h1>
+        <p style="margin-top:15px; font-size: 24px;" id="nextLevelText">Level 2 के लिए तैयार हो जाएँ</p>
+        <button class="panel-btn" onclick="nextLevel()">NEXT LEVEL ▶</button>
+    </div>
+
+    <!-- मेगा विक्ट्री स्क्रीन -->
+    <div id="victoryScreen" class="overlay-screen">
+        <h1 style="color: #ff9800; font-size: 44px; text-shadow: 0 0 15px #ff9800;">🏆 GAME COMPLETED 🏆</h1>
+        <p style="margin-top:15px; font-size: 24px; color: #fff;">आपने सभी 50 लेवल पार कर लिए हैं!</p>
+        <button class="panel-btn" onclick="resetToMenu()">MAIN MENU</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    function resize() { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+    resize();
+
+    // इमेजेस लोडिंग
+    const imgMap = {
+        jeep: new Image(), cruiser: new Image(), sportbike: new Image(), audi: new Image(),
+        yellowcar: new Image(), tree: new Image(), fuel: new Image(), chest: new Image()
+    };
+    imgMap.jeep.src = 'https://ibb.co';
+    imgMap.cruiser.src = 'https://ibb.co';
+    imgMap.sportbike.src = 'https://ibb.co';
+    imgMap.audi.src = 'https://ibb.co';
+    imgMap.yellowcar.src = 'https://ibb.co'; 
+    imgMap.tree.src = 'https://ibb.co';           
+    imgMap.fuel.src = 'https://ibb.co';           
+    imgMap.chest.src = 'https://ibb.co';         
+
+    let currentLevel = 1, score = 0, levelTarget = 50, baseSpeed = 5;
+    let fuel = 100, gameOver = false, roadOffset = 0, isLevelTransition = false;
+    let selectedVehicle = 'jeep';
+    let player = { x: 0, y: 0, w: 45, h: 68, speed: 7 };
+    let enemies = [], bullets = [], items = [], trees = [];
+    let moveLeft = false, moveRight = false;
+
+    function selectVehicle(type, w, h) {
+        selectedVehicle = type; player.w = w; player.h = h;
+        document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+    }
+
+    function startGame() {
+        document.getElementById('menuScreen').style.display = 'none';
+        document.getElementById('gameArea').style.display = 'flex';
+        currentLevel = 1; score = 0; levelTarget = 50; baseSpeed = 5;
+        initLevel();
+    }
+
+    function initLevel() {
+        resize();
+        player.x = canvas.width / 2 - player.w / 2;
+        player.y = canvas.height - 130;
+        fuel = 100; gameOver = false; isLevelTransition = false;
+        enemies = []; bullets = []; items = []; trees = [];
+        
+        document.getElementById('levelVal').innerText = currentLevel;
+        document.getElementById('targetVal').innerText = levelTarget;
+        document.getElementById('scoreVal').innerText = score;
+        document.getElementById('fuelVal').innerText = fuel;
+        
+        animate();
+    }
+
+    function nextLevel() {
+        document.getElementById('levelScreen').style.display = 'none';
+        currentLevel++;
+        levelTarget = currentLevel * 50; // हर लेवल का टारगेट बढ़ेगा (50, 100, 150...)
+        baseSpeed = 5 + (currentLevel * 0.4); // स्पीड धीरे-धीरे बढ़ेगी
+        initLevel();
+    }
+
+    function resetToMenu() {
+        document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
+        document.getElementById('gameArea').style.display = 'none';
+        document.getElementById('menuScreen').style.display = 'flex';
+    }
+
+    // टच इवेंट्स
+    document.getElementById('leftBtn').addEventListener('touchstart', (e) => { e.preventDefault(); moveLeft = true; });
+    document.getElementById('leftBtn').addEventListener('touchend', (e) => { e.preventDefault(); moveLeft = false; });
+    document.getElementById('rightBtn').addEventListener('touchstart', (e) => { e.preventDefault(); moveRight = true; });
+    document.getElementById('rightBtn').addEventListener('touchend', (e) => { e.preventDefault(); moveRight = false; });
+    document.getElementById('fire').addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
